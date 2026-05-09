@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>拍下當買了 (雲端連線版)</title>
+    
+    <!-- 引入 Firebase 核心套件與服務 -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* === 顏色變數設定 - 黑藍版 === */
+        :root {
+            --bg-dark: #000000;
+            --box-bg: #1c1c1e;
+            --theme-main: #0a84ff;  
+            --theme-green: #32d74b; 
+            --text-main: #ffffff;
+            --text-sub: #888888;
+            --error-red: #ff453a;   
+        }
+
+        body { font-family: -apple-system, sans-serif; background-color: var(--bg-dark); color: var(--text-main); padding: 15px; margin: 0; padding-bottom: 80px; }
+        .container { max-width: 400px; margin: auto; display: flex; flex-direction: column; gap: 12px; }
+        
+        .header-title { display: flex; justify-content: space-between; align-items: center; font-size: 20px; font-weight: bold; margin-bottom: 5px; color: var(--theme-main); }
+        .logout-btn { font-size: 14px; color: var(--error-red); cursor: pointer; background: none; border: none; font-weight: bold; }
+
+        /* === 登入與載入畫面 === */
+        #loginScreen { position: fixed; top:0; left:0; right:0; bottom:0; background: var(--bg-dark); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .login-btn { background: white; color: black; padding: 15px 30px; border-radius: 30px; font-size: 18px; font-weight: bold; border: none; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+        #mainApp { display: none; } 
+        #loadingOverlay { position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.8); z-index:10000; display:none; color:white; font-size:20px; align-items:center; justify-content:center; }
+
+        /* === 輸入框設計 === */
+        .input-group { border: 2px solid #333; border-radius: 10px; padding: 12px; display: flex; align-items: center; background: var(--bg-dark); margin-bottom: 10px; position: relative; }
+        .input-group.blue-focus:focus-within { border-color: var(--theme-main); }
+        input, select { background: transparent; border: none; color: var(--text-main); font-size: 16px; outline: none; width: 100%; }
+        input::placeholder { color: #666; }
+        select option { color: #000; }
+        .clear-input { color: #666; font-size: 18px; padding-left: 10px; cursor: pointer; }
+        
+        /* === 上傳按鈕與預覽 === */
+        input[type="file"] { display: none; }
+        .upload-label { width: 100%; color: var(--text-sub); text-align: center; cursor: pointer; font-size: 16px; }
+        #preview-img { width: 100%; max-height: 250px; object-fit: cover; border-radius: 10px; display: none; margin-bottom: 10px; border: 1px solid #333; }
+        .converted-text { color: var(--theme-main); font-size: 14px; text-align: right; margin-top: -5px; margin-bottom: 10px; min-height: 18px; font-weight: bold; }
+
+        /* === iOS Switch === */
+        .rate-panel { background: var(--box-bg); padding: 15px; border-radius: 10px; margin-bottom: 10px; }
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; }
+        .toggle-row span { font-size: 16px; font-weight: 500; }
+        .ios-switch { position: relative; display: inline-block; width: 51px; height: 31px; }
+        .ios-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #39393d; transition: .3s; border-radius: 31px; }
+        .slider:before { position: absolute; content: ""; height: 27px; width: 27px; left: 2px; bottom: 2px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        input:checked + .slider { background-color: var(--theme-green); }
+        input:checked + .slider:before { transform: translateX(20px); }
+        .rate-divider { height: 1px; background-color: #333; margin: 12px 0; display: none; }
+
+        /* === 按鈕與列表 === */
+        .action-btn { width: 100%; padding: 15px; border-radius: 10px; font-size: 18px; font-weight: bold; border: none; cursor: pointer; color: white; margin-top: 5px; }
+        .btn-main { background: var(--theme-main); }
+        .log-list { margin-top: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .log-item { background: var(--box-bg); border-radius: 10px; padding: 15px; border-left: 5px solid var(--theme-main); position: relative; display: flex; gap: 15px; }
+        .log-img-box { width: 70px; height: 70px; border-radius: 8px; background: #222; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .log-img-box img { width: 100%; height: 100%; object-fit: cover; }
+        .log-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .log-title { font-size: 16px; font-weight: bold; margin-bottom: 4px; color: var(--text-main); padding-right: 40px; }
+        .log-orig-price { font-size: 12px; color: var(--text-sub); }
+        .log-hkd-price { font-size: 16px; font-weight: bold; color: var(--theme-main); margin-top: 4px; }
+        .log-date { font-size: 11px; color: #555; position: absolute; bottom: 15px; right: 15px; }
+        .log-actions { position: absolute; right: 10px; top: 10px; display: flex; gap: 8px; }
+        .icon-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 5px; color: var(--text-sub); }
+        .icon-btn.del { color: var(--error-red); }
+
+        /* === 底部統計 === */
+        .summary-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #111; padding: 15px 20px; border-top: 1px solid #333; display: flex; justify-content: space-between; align-items: center; z-index: 100; box-shadow: 0 -5px 15px rgba(0,0,0,0.8); }
+        .summary-col { display: flex; flex-direction: column; }
+        .summary-label { font-size: 12px; color: var(--text-sub); margin-bottom: 2px; }
+        .summary-val { font-size: 16px; font-weight: bold; }
+        .val-total { font-size: 22px; color: var(--theme-main); }
+    </style>
+</head>
+<body>
+
+<!-- 登入畫面 -->
+<div id="loginScreen">
+    <h1 style="color: var(--theme-main); margin-bottom: 40px;">📸 拍下當買了</h1>
+    <button class="login-btn" onclick="loginWithGoogle()">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="24" height="24">
+        使用 Google 登入
+    </button>
+</div>
+
+<!-- 載入中遮罩 -->
+<div id="loadingOverlay">雲端處理中，請稍候...</div>
+
+<!-- 主應用程式區塊 -->
+<div id="mainApp" class="container">
+    <div class="header-title">
+        <span>📸 拍下當買了</span>
+        <button class="logout-btn" onclick="logout()">登出</button>
+    </div>
+
+    <!-- 圖片上傳區 -->
+    <img id="preview-img" alt="預覽圖片">
+    <div class="input-group blue-focus">
+        <label class="upload-label" for="photoUpload" id="uploadLabelText">📷 點此拍照或選取照片</label>
+        <input type="file" id="photoUpload" accept="image/*">
+    </div>
+
+    <!-- 物品名稱 -->
+    <div class="input-group blue-focus" id="nameGroup">
+        <input type="text" id="itemName" placeholder="忍住不買的東西是？">
+        <span class="clear-input" onclick="document.getElementById('itemName').value=''">✕</span>
+    </div>
+    
+    <!-- 幣值與價錢 -->
+    <div class="input-group blue-focus" id="priceGroup" style="gap: 10px;">
+        <select id="currencySelect" onchange="toggleCurrencyUI()" style="width: 80px; border-right: 1px solid #333; padding-right: 5px;">
+            <option value="HKD">HKD</option>
+            <option value="JPY">JPY</option>
+            <option value="TWD">TWD</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+            <option value="KRW">KRW</option>
+        </select>
+        <input type="number" id="itemPrice" placeholder="標價多少？" inputmode="decimal" oninput="updateConvertedPrice()">
+    </div>
+
+    <!-- 匯率面板 (iOS Switch) -->
+    <div id="rateContainer" class="rate-panel" style="display: none;">
+        <div class="toggle-row">
+            <span>自訂匯率</span>
+            <label class="ios-switch">
+                <input type="checkbox" id="rateTypeToggle" onchange="handleRateToggle()">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div id="rateDivider" class="rate-divider"></div>
+        <div id="autoRateText" style="color: var(--text-sub); font-size: 14px; text-align: center; margin-top: 5px;">載入中...</div>
+        <div id="customRateGroup" style="display: none;">
+            <input type="number" id="customRate" placeholder="輸入匯率 (例:0.05)" inputmode="decimal" style="width: 100%; padding: 10px; border-radius: 8px; background: #000; border: 1px solid #444; color: white; text-align: center; box-sizing: border-box;" oninput="updateConvertedPrice()">
+        </div>
+    </div>
+
+    <div id="convertedDisplay" class="converted-text"></div>
+    
+    <!-- 存檔按鈕 -->
+    <button id="mainBtn" class="action-btn btn-main" onclick="saveRecordToCloud()">假裝買了！存入雲端</button>
+
+    <!-- 紀錄列表 -->
+    <div class="log-list" id="recordList"></div>
+</div>
+
+<!-- 底部統計列 -->
+<div class="summary-bar">
+    <div class="summary-col">
+        <span class="summary-label">忍住次數</span>
+        <span class="summary-val" id="sumCount" style="color: white;">0 次</span>
+    </div>
+    <div class="summary-col" style="align-items: flex-end;">
+        <span class="summary-label">成功省下</span>
+        <span class="summary-val val-total" id="sumTotal">HK$ 0.00</span>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // ⚠️ 1. 請把你的 Firebase Config 貼在下方 ⚠️
+    // ==========================================
+    // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyDoRrfo-cjB0Bdxm5RQIykaMtT54-6MEqc",
+  authDomain: "uselessmoneyla.firebaseapp.com",
+  projectId: "uselessmoneyla",
+  storageBucket: "uselessmoneyla.firebasestorage.app",
+  messagingSenderId: "927929088152",
+  appId: "1:927929088152:web:c78a0766b565b6ce8a78ed",
+  measurementId: "G-T8H0E228SS"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+    
+    // 初始化 Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // 全域變數
+    let currentUser = null;
+    let currentPhotoBase64 = "";
+    let exchangeRates = {};
+
+    // ================= 獲取即時匯率 =================
+    window.onload = () => { fetchRates(); };
+    async function fetchRates() {
+        try {
+            const response = await fetch('https://open.er-api.com/v6/latest/HKD');
+            const data = await response.json();
+            exchangeRates = data.rates;
+            updateAutoRateText();
+        } catch (error) {
+            console.error("無法取得匯率", error);
+            document.getElementById('autoRateText').innerText = "⚠️ 無法連線取得匯率";
+        }
+    }
+
+    // ================= 登入系統邏輯 =================
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            currentUser = user;
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'flex';
+            document.querySelector('.summary-bar').style.display = 'flex';
+            loadRecordsFromCloud(); // 登入成功後讀取資料
+        } else {
+            currentUser = null;
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('mainApp').style.display = 'none';
+            document.querySelector('.summary-bar').style.display = 'none';
+        }
+    });
+
+    function loginWithGoogle() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch((error) => { alert("登入失敗：" + error.message); });
+    }
+    function logout() { auth.signOut(); }
+
+    // ================= 圖片壓縮處理 =================
+    document.getElementById('photoUpload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 400;
+                let width = img.width, height = img.height;
+                if (width > MAX_WIDTH) { height = height * (MAX_WIDTH / width); width = MAX_WIDTH; }
+                canvas.width = width; canvas.height = height;
+                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                
+                currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.6); // 壓縮品質 0.6 讓代碼更短
+                document.getElementById('preview-img').src = currentPhotoBase64;
+                document.getElementById('preview-img').style.display = 'block';
+                document.getElementById('uploadLabelText').innerText = "🔄 重新選擇圖片";
+            }
+            img.src = event.target.result;
+        }
+        reader.readAsDataURL(file);
+    });
+
+    // ================= 匯率介面邏輯 =================
+    function toggleCurrencyUI() {
+        const currency = document.getElementById('currencySelect').value;
+        const rateContainer = document.getElementById('rateContainer');
+        if (currency === 'HKD') {
+            rateContainer.style.display = 'none';
+        } else {
+            rateContainer.style.display = 'block';
+            updateAutoRateText();
+        }
+        updateConvertedPrice();
+    }
+
+    function handleRateToggle() {
+        const isCustom = document.getElementById('rateTypeToggle').checked;
+        const autoText = document.getElementById('autoRateText');
+        const customGroup = document.getElementById('customRateGroup');
+        const divider = document.getElementById('rateDivider');
+        if(isCustom) {
+            autoText.style.display = 'none'; customGroup.style.display = 'block'; divider.style.display = 'block';
+            if(document.getElementById('customRate').value === "") document.getElementById('customRate').focus();
+        } else {
+            autoText.style.display = 'block'; customGroup.style.display = 'none'; divider.style.display = 'none';
+        }
+        updateConvertedPrice();
+    }
+
+    function updateAutoRateText() {
+        const currency = document.getElementById('currencySelect').value;
+        if (currency !== 'HKD' && exchangeRates[currency]) {
+            const rateToHkd = (1 / exchangeRates[currency]).toFixed(4);
+            document.getElementById('autoRateText').innerText = `依當日匯率：1 ${currency} ≈ ${rateToHkd} HKD`;
+        }
+    }
+
+    function updateConvertedPrice() {
+        const price = parseFloat(document.getElementById('itemPrice').value);
+        const currency = document.getElementById('currencySelect').value;
+        const display = document.getElementById('convertedDisplay');
+        if (isNaN(price) || price === 0 || currency === 'HKD') { display.innerText = ""; return; }
+
+        const isCustom = document.getElementById('rateTypeToggle').checked;
+        let hkdValue = 0;
+        if (!isCustom) {
+            if (!exchangeRates[currency]) return;
+            hkdValue = price / exchangeRates[currency];
+        } else {
+            const customRate = parseFloat(document.getElementById('customRate').value);
+            if (isNaN(customRate) || customRate === 0) { display.innerText = "請輸入匯率進行試算"; return; }
+            hkdValue = price * customRate;
+        }
+        display.innerText = `≈ 折合 HK$ ${hkdValue.toFixed(2)}`;
+    }
+
+    // ================= 存入雲端邏輯 (免 Storage 破解版) =================
+    async function saveRecordToCloud() {
+        if (!currentUser) return;
+        const name = document.getElementById('itemName').value.trim();
+        const priceStr = document.getElementById('itemPrice').value;
+        const price = parseFloat(priceStr);
+        const currency = document.getElementById('currencySelect').value;
+
+        if (!name || isNaN(price)) { alert("請填寫名稱和價錢！"); return; }
+
+        // 計算港幣總額與確認匯率
+        let hkdValue = price;
+        let savedRateType = 'auto';
+        let savedCustomRate = null;
+        const isCustom = document.getElementById('rateTypeToggle').checked;
+
+        if (currency !== 'HKD') {
+            if (!isCustom) {
+                if (exchangeRates[currency]) hkdValue = price / exchangeRates[currency];
+            } else {
+                savedRateType = 'custom';
+                const customRate = parseFloat(document.getElementById('customRate').value);
+                if (isNaN(customRate) || customRate <= 0) { alert("請填寫有效的自定匯率！"); return; }
+                savedCustomRate = customRate;
+                hkdValue = price * customRate;
+            }
+        }
+
+        document.getElementById('loadingOverlay').style.display = 'flex';
+
+        try {
+            const recordData = {
+                name: name,
+                origPrice: price, 
+                currency: currency,
+                hkdValue: hkdValue,
+                rateType: savedRateType,
+                customRate: savedCustomRate,
+                photoUrl: currentPhotoBase64, // 直接存文字代碼，不使用 Storage！
+                createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+            };
+
+            // 寫入 Firestore 雲端資料庫
+            await db.collection("users").doc(currentUser.uid).collection("records").add(recordData);
+
+            // 清空表單
+            document.getElementById('itemName').value = '';
+            document.getElementById('itemPrice').value = '';
+            document.getElementById('currencySelect').value = 'HKD';
+            toggleCurrencyUI();
+            document.getElementById('rateTypeToggle').checked = false;
+            handleRateToggle();
+            document.getElementById('customRate').value = '';
+            currentPhotoBase64 = '';
+            document.getElementById('preview-img').style.display = 'none';
+            document.getElementById('uploadLabelText').innerText = "📷 點此拍照或選取照片";
+
+        } catch (error) {
+            console.error(error);
+            alert("上傳失敗：" + error.message);
+        } finally {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+    }
+
+    // ================= 即時讀取與渲染列表 =================
+    function loadRecordsFromCloud() {
+        if (!currentUser) return;
+        
+        db.collection("users").doc(currentUser.uid).collection("records")
+          .orderBy("createdAt", "desc")
+          .onSnapshot((snapshot) => {
+            let listHtml = '';
+            let totalHkd = 0;
+            let count = 0;
+
+            snapshot.forEach((doc) => {
+                const r = doc.data();
+                const id = doc.id;
+                count++;
+                totalHkd += r.hkdValue || 0;
+                
+                const imgHtml = r.photoUrl 
+                    ? `<img src="${r.photoUrl}">` 
+                    : `<span style="font-size:24px;">🚫</span>`;
+
+                let origText = '';
+                if (r.currency && r.currency !== 'HKD') {
+                    origText = `原價: ${r.currency} ${r.origPrice}`;
+                    if (r.rateType === 'custom') origText += ` (自定匯率)`;
+                }
+
+                // 處理 Firebase 的時間格式
+                let dateStr = "剛剛";
+                if(r.createdAt) dateStr = r.createdAt.toDate().toLocaleDateString();
+
+                listHtml += `
+                <div class="log-item">
+                    <div class="log-actions">
+                        <button class="icon-btn del" onclick="deleteRecordFromCloud('${id}')">✕</button>
+                    </div>
+                    <div class="log-img-box">${imgHtml}</div>
+                    <div class="log-info">
+                        <div class="log-title">${r.name}</div>
+                        <div class="log-orig-price">${origText}</div>
+                        <div class="log-hkd-price">HK$ ${(r.hkdValue || r.price).toFixed(2)}</div>
+                    </div>
+                    <div class="log-date">${dateStr}</div>
+                </div>`;
+            });
+            
+            document.getElementById('recordList').innerHTML = listHtml;
+            document.getElementById('sumCount').innerText = `${count} 次`;
+            document.getElementById('sumTotal').innerText = `HK$ ${totalHkd.toFixed(2)}`;
+        });
+    }
+
+    // ================= 刪除資料 =================
+    async function deleteRecordFromCloud(recordId) {
+        if (!confirm("確定要刪除嗎？")) return;
+        try {
+            await db.collection("users").doc(currentUser.uid).collection("records").doc(recordId).delete();
+        } catch (error) {
+            alert("刪除失敗：" + error);
+        }
+    }
+</script>
+</body>
+</html>
