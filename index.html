@@ -2,8 +2,8 @@
 <html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>拍下當買了</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>拍下當買了 (雲端連線版)</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -11,331 +11,249 @@
 
     <style>
         :root {
-            --bg-color: #000000;
-            --card-bg: #1c1c1e;
-            --accent-blue: #0a84ff;
-            --accent-green: #30d158;
-            --text-primary: #ffffff;
-            --text-secondary: #8e8e93;
-            --danger: #ff453a;
+            --bg-dark: #000000; --box-bg: #1c1c1e; --theme-main: #0a84ff;  
+            --theme-green: #32d74b; --text-main: #ffffff; --text-sub: #888888; --error-red: #ff453a;   
         }
-
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-primary);
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-            padding-bottom: 100px;
-        }
-
-        .app-container {
-            width: 100%;
-            max-width: 400px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        /* 登入畫面 */
-        #loginScreen {
-            position: fixed;
-            inset: 0;
-            background: var(--bg-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            padding: 40px;
-        }
-
-        .login-title { font-size: 28px; font-weight: 800; margin-bottom: 40px; background: linear-gradient(to right, #0a84ff, #5e5ce6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-
-        .google-btn {
-            background: white;
-            color: #000;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            border: none;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(255,255,255,0.1);
-        }
-
-        /* 主程式碼 */
-        #mainApp { display: none; width: 100%; }
-
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .logout-link { color: var(--danger); font-size: 14px; text-decoration: none; font-weight: 600; cursor: pointer; }
-
-        .input-card {
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .preview-box {
-            width: 100%;
-            aspect-ratio: 4/3;
-            background: #2c2c2e;
-            border-radius: 12px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px dashed #444;
-        }
-
-        #preview-img { width: 100%; height: 100%; object-fit: cover; display: none; }
-        .placeholder-text { color: var(--text-secondary); font-size: 14px; text-align: center; }
-
-        input, select {
-            background: #2c2c2e;
-            border: 1px solid #3a3a3c;
-            color: white;
-            padding: 12px;
-            border-radius: 10px;
-            font-size: 16px;
-            outline: none;
-            width: 100%;
-        }
-
-        input:focus { border-color: var(--accent-blue); }
-
-        .submit-btn {
-            background: var(--accent-blue);
-            color: white;
-            border: none;
-            padding: 16px;
-            border-radius: 14px;
-            font-size: 17px;
-            font-weight: 700;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        /* 紀錄清單 */
-        .log-item {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 12px;
-            display: flex;
-            gap: 12px;
-            margin-bottom: 12px;
-            position: relative;
-        }
-
-        .thumb { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; background: #333; }
-        .info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
-        .item-name { font-weight: 600; font-size: 16px; margin-bottom: 4px; }
-        .item-price { color: var(--accent-blue); font-weight: 700; font-size: 14px; }
-        .delete-btn { position: absolute; right: 12px; top: 12px; color: #444; font-size: 18px; cursor: pointer; }
-
-        /* 底部欄 */
-        .tab-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(28, 28, 30, 0.95);
-            backdrop-filter: blur(20px);
-            padding: 15px 25px;
-            display: flex;
-            justify-content: space-between;
-            border-top: 0.5px solid #333;
-        }
-
-        .stat-group { display: flex; flex-direction: column; }
-        .stat-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-        .stat-value { font-size: 18px; font-weight: 700; }
+        body { font-family: -apple-system, sans-serif; background-color: var(--bg-dark); color: var(--text-main); padding: 15px; margin: 0; padding-bottom: 80px; padding-top: env(safe-area-inset-top); }
+        .container { max-width: 400px; margin: auto; display: flex; flex-direction: column; gap: 12px; }
         
-        #loadingOverlay { position: fixed; inset:0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        #loginScreen { position: fixed; top:0; left:0; right:0; bottom:0; background: var(--bg-dark); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+        .login-box { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 15px; }
+        .login-input { background: #222; border: 1px solid #444; border-radius: 10px; padding: 15px; color: white; font-size: 16px; outline: none; }
+        .login-input:focus { border-color: var(--theme-main); }
+        .email-btn { background: var(--theme-main); color: white; padding: 15px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; font-size: 16px;}
+        .reg-link { color: var(--theme-main); font-size: 14px; text-align: center; text-decoration: underline; cursor: pointer; padding: 10px; }
+        
+        #errorMsg { color: var(--error-red); background: rgba(255,69,58,0.1); padding: 10px; border-radius: 8px; text-align: center; font-size: 14px; display: none; font-weight: bold;}
+
+        .divider { display: flex; align-items: center; color: #444; margin: 10px 0; font-size: 12px;}
+        .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #333; margin: 0 10px; }
+        .google-btn { background: white; color: black; padding: 15px; border-radius: 10px; font-size: 16px; font-weight: bold; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        
+        #mainApp { display: none; } 
+        #loadingOverlay { position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.8); z-index:10000; display:none; color:white; font-size:20px; align-items:center; justify-content:center; }
+        .header-title { display: flex; justify-content: space-between; align-items: center; font-size: 20px; font-weight: bold; margin-bottom: 5px; color: var(--theme-main); }
+        .logout-btn { font-size: 14px; color: var(--error-red); cursor: pointer; background: none; border: none; font-weight: bold; }
+
+        .input-group { border: 2px solid #333; border-radius: 10px; padding: 12px; display: flex; align-items: center; background: var(--bg-dark); margin-bottom: 10px; }
+        input, select { background: transparent; border: none; color: var(--text-main); font-size: 16px; outline: none; width: 100%; }
+        .action-btn { width: 100%; padding: 15px; border-radius: 10px; font-size: 18px; font-weight: bold; border: none; color: white; }
+        .btn-main { background: var(--theme-main); }
+        .log-list { margin-top: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .log-item { background: var(--box-bg); border-radius: 10px; padding: 15px; border-left: 5px solid var(--theme-main); position: relative; display: flex; gap: 15px; }
+        .log-img-box { width: 70px; height: 70px; border-radius: 8px; background: #222; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .log-img-box img { width: 100%; height: 100%; object-fit: cover; }
+        .log-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .log-title { font-size: 16px; font-weight: bold; margin-bottom: 4px; color: var(--text-main); }
+        .log-hkd-price { font-size: 16px; font-weight: bold; color: var(--theme-main); }
+        .log-actions { position: absolute; right: 10px; top: 10px; }
+        .icon-btn.del { color: var(--error-red); background:none; border:none; font-size:16px; }
+
+        .summary-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #111; padding: 15px 20px; border-top: 1px solid #333; display: flex; justify-content: space-between; align-items: center; padding-bottom: calc(15px + env(safe-area-inset-bottom));}
+        .ver-tag { position: absolute; bottom: 30px; font-size: 11px; color: #444; }
     </style>
 </head>
 <body>
 
-<div id="loadingOverlay">處理中...</div>
-
 <div id="loginScreen">
-    <div class="login-title">📸 拍下當買了</div>
-    <button class="google-btn" onclick="login()">
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20">
-        使用 Google 帳號登入
-    </button>
-    <p style="color: #444; font-size: 12px; margin-top: 20px;">登入後即可跨裝置同步紀錄</p>
-</div>
+    <h1 style="color: var(--theme-main); margin-bottom: 30px;">📸 拍下當買了</h1>
+    
+    <div class="login-box">
+        <div id="errorMsg"></div>
 
-<div id="mainApp" class="app-container">
-    <div class="header">
-        <h2 style="margin:0; font-size: 20px;">我的省錢紀錄</h2>
-        <span class="logout-link" onclick="logout()">登出</span>
+        <input type="email" id="loginEmail" class="login-input" placeholder="電子郵件信箱">
+        <input type="password" id="loginPassword" class="login-input" placeholder="密碼 (至少6位)">
+        
+        <button class="email-btn" onclick="emailLogin()">登 入</button>
+        <span class="reg-link" onclick="emailRegister()">第一次用？點此註冊帳號</span>
+
+        <div class="divider">由於系統限制，捷徑內請使用電郵登入</div>
+
+        <button class="google-btn" onclick="googleLogin()">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="20" height="20">
+            Safari 專用 Google 登入
+        </button>
     </div>
 
-    <div class="input-card">
-        <label for="fileInput" class="preview-box">
-            <img id="preview-img" src="" alt="預覽">
-            <div id="placeholder" class="placeholder-text">📷 點擊拍照或選取照片</div>
+    <div class="ver-tag">SYSTEM VERSION 2.2 (Error Check)</div>
+</div>
+
+<div id="loadingOverlay">雲端處理中...</div>
+
+<div id="mainApp" class="container">
+    <div class="header-title">
+        <span>📸 拍下當買了</span>
+        <button class="logout-btn" onclick="logout()">登出</button>
+    </div>
+
+    <img id="preview-img" style="width:100%; max-height:250px; object-fit:cover; border-radius:10px; display:none; margin-bottom:10px;">
+    <div class="input-group">
+        <label style="width:100%; text-align:center; color:var(--text-sub); cursor:pointer;">
+            📷 點此拍照或選取照片
+            <input type="file" id="photoUpload" accept="image/*" style="display:none;">
         </label>
-        <input type="file" id="fileInput" accept="image/*" style="display: none;">
-        
-        <input type="text" id="name" placeholder="忍住沒買的物品名稱">
-        
-        <div style="display: flex; gap: 8px;">
-            <select id="currency" style="flex: 1;">
-                <option value="HKD">HKD</option>
-                <option value="JPY">JPY</option>
-                <option value="TWD">TWD</option>
-            </select>
-            <input type="number" id="price" placeholder="金額" style="flex: 2;">
-        </div>
-        
-        <button class="submit-btn" onclick="saveData()">存入雲端</button>
     </div>
 
-    <div id="list"></div>
+    <div class="input-group">
+        <input type="text" id="itemName" placeholder="忍住不買的東西是？">
+    </div>
+    
+    <div class="input-group">
+        <input type="number" id="itemPrice" placeholder="標價多少 (HKD)？" inputmode="decimal">
+    </div>
+
+    <button class="action-btn btn-main" onclick="saveToCloud()">假裝買了！存入雲端</button>
+
+    <div class="log-list" id="recordList"></div>
 </div>
 
-<div class="tab-bar" id="tabBar" style="display: none;">
-    <div class="stat-group">
-        <span class="stat-label">已忍住</span>
-        <span id="totalCount" class="stat-value">0 次</span>
-    </div>
-    <div class="stat-group" style="align-items: flex-end;">
-        <span class="stat-label">累計省下</span>
-        <span id="totalMoney" class="stat-value" style="color: var(--accent-green);">HK$ 0</span>
+<div class="summary-bar">
+    <div style="display:flex; flex-direction:column;">
+        <span style="font-size:12px; color:var(--text-sub);">成功省下</span>
+        <span id="sumTotal" style="font-size:22px; font-weight:bold; color:var(--theme-main);">HK$ 0.00</span>
     </div>
 </div>
 
 <script>
-    // ⚠️ 請務必填入你自己的金鑰 ⚠️
-    const firebaseConfig = {
-        apiKey: "AIzaSyDoRrfo-cjB0Bdxm5RQIykaMtT54-6MEqc",
-        authDomain: "uselessmoneyla.firebaseapp.com",
-        projectId: "uselessmoneyla",
-        storageBucket: "uselessmoneyla.firebasestorage.app",
-        messagingSenderId: "927929088152",
-  appId: "1:927929088152:web:c78a0766b565b6ce8a78ed",
-  measurementId: "G-T8H0E228SS"
-};
+    // 讓錯誤顯示在畫面上的小工具
+    function showErr(msg) {
+        const errDiv = document.getElementById('errorMsg');
+        errDiv.innerText = msg;
+        errDiv.style.display = 'block';
+    }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+    try {
+        // === 1. 你的 Firebase 設定 ===
+        // ⚠️ 警告：後面的數字一定要被 "" 包住，絕對不能刪掉引號！
+        const firebaseConfig = {
+            apiKey: "AIzaSyDoRrfo-cjB0Bdxm5RQIykaMtT54-6MEqc",
+            authDomain: "uselessmoneyla.firebaseapp.com",
+            projectId: "uselessmoneyla",
+            storageBucket: "uselessmoneyla.firebasestorage.app",
+            messagingSenderId: "927929088152", // <- 注意這個引號 ""
+            appId: "1:927929088152:web:c78a0766b565b6ce8a78ed" // <- 注意這個引號 ""
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+    } catch(e) {
+        showErr("系統設定錯誤，請檢查金鑰是否有少引號：\n" + e.message);
+    }
 
-    firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    let userUID = null;
-    let base64Image = "";
+    let currentUser = null;
+    let currentPhotoBase64 = "";
 
-    // 登入狀態監控
-    auth.onAuthStateChanged(user => {
+    auth.onAuthStateChanged((user) => {
         if (user) {
-            userUID = user.uid;
+            currentUser = user;
             document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('mainApp').style.display = 'block';
-            document.getElementById('tabBar').style.display = 'flex';
-            fetchData();
+            document.getElementById('mainApp').style.display = 'flex';
+            loadData();
         } else {
+            currentUser = null;
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('mainApp').style.display = 'none';
-            document.getElementById('tabBar').style.display = 'none';
         }
     });
 
-    async function login() {
+    function googleLogin() {
         const provider = new firebase.auth.GoogleAuthProvider();
-        await auth.signInWithRedirect(provider);
+        auth.signInWithRedirect(provider).catch(err => showErr("Google登入被阻擋：" + err.message));
     }
 
-    async function logout() { await auth.signOut(); }
+    function emailLogin() {
+        const email = document.getElementById('loginEmail').value.trim();
+        const pass = document.getElementById('loginPassword').value;
+        if(!email || !pass) return showErr("請填寫電郵和密碼！");
+        auth.signInWithEmailAndPassword(email, pass).catch(err => showErr("登入失敗：帳號錯誤或不存在"));
+    }
 
-    // 處理圖片
-    document.getElementById('fileInput').onchange = e => {
+    function emailRegister() {
+        const email = document.getElementById('loginEmail').value.trim();
+        const pass = document.getElementById('loginPassword').value;
+        if(!email) return showErr("請在上方輸入想註冊的電郵！");
+        if(pass.length < 6) return showErr("密碼太短，請至少輸入 6 個字！");
+        
+        auth.createUserWithEmailAndPassword(email, pass)
+            .then(() => alert("註冊成功！歡迎加入！"))
+            .catch(err => showErr("註冊失敗：" + err.message));
+    }
+
+    function logout() { auth.signOut(); }
+
+    document.getElementById('photoUpload').addEventListener('change', function(e) {
         const file = e.target.files[0];
+        if (!file) return;
         const reader = new FileReader();
-        reader.onload = event => {
+        reader.onload = function(event) {
             const img = new Image();
-            img.onload = () => {
+            img.onload = function() {
                 const canvas = document.createElement('canvas');
-                const scale = Math.min(1, 400 / img.width);
-                canvas.width = img.width * scale;
-                canvas.height = img.height * scale;
-                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                base64Image = canvas.toDataURL('image/jpeg', 0.6);
-                document.getElementById('preview-img').src = base64Image;
+                const MAX_WIDTH = 400;
+                let width = img.width, height = img.height;
+                if (width > MAX_WIDTH) { height = height * (MAX_WIDTH / width); width = MAX_WIDTH; }
+                canvas.width = width; canvas.height = height;
+                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
+                document.getElementById('preview-img').src = currentPhotoBase64;
                 document.getElementById('preview-img').style.display = 'block';
-                document.getElementById('placeholder').style.display = 'none';
-            };
+            }
             img.src = event.target.result;
-        };
+        }
         reader.readAsDataURL(file);
-    };
+    });
 
-    // 儲存資料
-    async function saveData() {
-        const name = document.getElementById('name').value;
-        const price = document.getElementById('price').value;
-        if (!name || !price) return alert("請填寫名稱和金額");
+    async function saveToCloud() {
+        if (!currentUser) return;
+        const name = document.getElementById('itemName').value;
+        const price = parseFloat(document.getElementById('itemPrice').value);
+        if (!name || isNaN(price)) return alert("請填寫名稱和價錢");
 
         document.getElementById('loadingOverlay').style.display = 'flex';
         try {
-            await db.collection('users').doc(userUID).collection('records').add({
-                name,
-                price: parseFloat(price),
-                currency: document.getElementById('currency').value,
-                image: base64Image,
-                time: firebase.firestore.FieldValue.serverTimestamp()
+            await db.collection("users").doc(currentUser.uid).collection("records").add({
+                name: name,
+                price: price,
+                photoUrl: currentPhotoBase64,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            document.getElementById('name').value = "";
-            document.getElementById('price').value = "";
+            document.getElementById('itemName').value = '';
+            document.getElementById('itemPrice').value = '';
+            currentPhotoBase64 = '';
             document.getElementById('preview-img').style.display = 'none';
-            document.getElementById('placeholder').style.display = 'block';
-            base64Image = "";
-        } catch (e) { alert("儲存失敗"); }
+        } catch (e) { showErr("儲存失敗：" + e.message); }
         document.getElementById('loadingOverlay').style.display = 'none';
     }
 
-    // 抓取資料
-    function fetchData() {
-        db.collection('users').doc(userUID).collection('records').orderBy('time', 'desc').onSnapshot(snap => {
-            let html = '';
-            let total = 0;
+    function loadData() {
+        db.collection("users").doc(currentUser.uid).collection("records")
+          .orderBy("createdAt", "desc")
+          .onSnapshot(snap => {
+            let html = ''; let total = 0;
             snap.forEach(doc => {
-                const d = doc.data();
-                total += d.price;
+                const r = doc.data();
+                total += r.price;
                 html += `
-                    <div class="log-item">
-                        <img class="thumb" src="${d.image || ''}">
-                        <div class="info">
-                            <div class="item-name">${d.name}</div>
-                            <div class="item-price">${d.currency} ${d.price}</div>
-                        </div>
-                        <div class="delete-btn" onclick="deleteItem('${doc.id}')">×</div>
+                <div class="log-item">
+                    <div class="log-img-box">${r.photoUrl ? `<img src="${r.photoUrl}">` : '🚫'}</div>
+                    <div class="log-info">
+                        <div class="log-title">${r.name}</div>
+                        <div class="log-hkd-price">HK$ ${r.price.toFixed(2)}</div>
                     </div>
-                `;
+                    <div class="log-actions">
+                        <button class="icon-btn del" onclick="deleteItem('${doc.id}')">✕</button>
+                    </div>
+                </div>`;
             });
-            document.getElementById('list').innerHTML = html;
-            document.getElementById('totalCount').innerText = snap.size + " 次";
-            document.getElementById('totalMoney').innerText = "HK$ " + total.toLocaleString();
-        });
+            document.getElementById('recordList').innerHTML = html;
+            document.getElementById('sumTotal').innerText = `HK$ ${total.toFixed(2)}`;
+          });
     }
 
-    async function deleteItem(id) {
-        if(confirm("確定刪除？")) await db.collection('users').doc(userUID).collection('records').doc(id).delete();
+    function deleteItem(id) {
+        if(confirm("確定刪除？")) db.collection("users").doc(currentUser.uid).collection("records").doc(id).delete();
     }
 </script>
 </body>
